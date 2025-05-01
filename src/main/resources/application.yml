@@ -10,7 +10,7 @@ spring:
       on-profile: local
 
   datasource:
-    url: jdbc:mariadb://ceprj.gachon.ac.kr:60023/db25123
+    url: jdbc:mariadb://localhost:3306/db25123
     driver-class-name: org.mariadb.jdbc.Driver
     username: dbid251
     password: dbpass251
