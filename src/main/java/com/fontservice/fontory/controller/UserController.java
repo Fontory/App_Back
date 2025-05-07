@@ -8,6 +8,11 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/users")
@@ -68,7 +73,28 @@ public class UserController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping("/uploadProfile")
+    @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지를 업로드하고, 접근 가능한 URL을 반환합니다.")
+    public ResponseEntity<String> uploadProfileImage(
+            @RequestParam("file") MultipartFile file) throws IOException {
 
+        // 저장 경로 설정
+        String uploadDir = "./uploads/profile/";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) dir.mkdirs(); // 폴더 없으면 생성
+
+        // 파일명 생성 (UUID_원본이름)
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        String filePath = uploadDir + fileName;
+
+        // 파일 저장
+        file.transferTo(new File(filePath));
+
+        // 접근 가능한 URL 반환
+        String fileUrl = "http://ceprj.gachon.ac.kr:60023/profile/" + fileName;
+
+        return ResponseEntity.ok(fileUrl);
+    }
 }
 
 
