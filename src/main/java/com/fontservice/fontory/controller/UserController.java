@@ -12,6 +12,11 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @RestController
@@ -84,15 +89,17 @@ public class UserController {
         // 2. 저장 디렉터리 & 경로 설정
         String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile/";
         File dir = new File(uploadDir);
-        if (!dir.exists()) dir.mkdirs(); // 없으면 생성
+        if (!dir.exists()) dir.mkdirs();
 
-        // 3. 저장할 파일 경로
-        String filePath = uploadDir + fileName;
+        // 3. 저장 경로
+        Path filePath = Paths.get(uploadDir, fileName);
 
-        // 4. 실제 파일 저장
-        file.transferTo(new File(filePath));
+        // 4. 파일 저장 (Tomcat 임시 경로 우회)
+        try (InputStream in = file.getInputStream()) {
+            Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
+        }
 
-        // 5. 접근 가능한 URL 생성
+        // 5. URL 생성
         String profileImageUrl = "http://ceprj.gachon.ac.kr:60023/profile/" + fileName;
 
         return ResponseEntity.ok(profileImageUrl);
