@@ -10,6 +10,7 @@ import com.fontservice.fontory.repository.UserRepository;
 import com.fontservice.fontory.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -141,6 +142,14 @@ public class UserService {
         if (dto.getProfileImage() != null) {
             user.setProfileImage(dto.getProfileImage());
         }
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void updateProfileImage(String userId, String imageUrl) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        user.setProfileImage(imageUrl);
         userRepository.save(user);
     }
 }

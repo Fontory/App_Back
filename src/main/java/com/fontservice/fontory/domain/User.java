@@ -39,6 +39,9 @@ public class User {
     @Column(name = "profile_image", length = 255)
     private String profileImage;
 
+    public void setProfileImage(String profileImage) {
+        this.profileImage = profileImage; }
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;

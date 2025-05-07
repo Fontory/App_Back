@@ -2,10 +2,13 @@ package com.fontservice.fontory.controller;
 
 import com.fontservice.fontory.domain.User;
 import com.fontservice.fontory.dto.user.*;
+import com.fontservice.fontory.security.JwtUtil;
 import com.fontservice.fontory.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -23,6 +27,7 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final JwtUtil jwtUtil;
 
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "userId와 password로 로그인합니다.")
@@ -76,28 +81,37 @@ public class UserController {
         return ResponseEntity.ok(result);
     }
 
-    @PostMapping("/uploadProfile")
-    @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지를 업로드하고, 접근 가능한 URL을 반환합니다.")
-    public ResponseEntity<String> uploadProfileImage(@RequestParam("file") MultipartFile file) throws IOException {
-        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile/";
-        File dir = new File(uploadDir);
-        if (!dir.exists()) dir.mkdirs();
+    @PostMapping("/profile-image")
+    public ResponseEntity<?> uploadProfileImage(@RequestParam("image") MultipartFile file,
+                                                HttpServletRequest request) {
+        try {
+            // 1. JWT에서 userId 추출
+            String userId = jwtUtil.getUserIdFromRequest(request);
 
-        File destination = new File(uploadDir + fileName);
-
-        // ⭐ 핵심: transferTo 말고 직접 저장
-        try (InputStream in = file.getInputStream(); OutputStream out = new FileOutputStream(destination)) {
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = in.read(buffer)) != -1) {
-                out.write(buffer, 0, length);
+            // 2. 저장할 경로 설정
+            String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile";
+            File dir = new File(uploadDir);
+            if (!dir.exists()) {
+                dir.mkdirs();
             }
-        }
 
-        String profileImageUrl = "http://ceprj.gachon.ac.kr:60023/profile/" + fileName;
-        System.out.println("✅ 저장 완료! URL: " + profileImageUrl);
-        return ResponseEntity.ok(profileImageUrl);
+            // 3. 파일 이름 설정
+            String fileName = UUID.randomUUID().toString() + "_" + userId + ".jpg";
+            String savePath = uploadDir + File.separator + fileName;
+
+            // 4. 파일 저장
+            file.transferTo(new File(savePath));
+
+            // 5. URL 생성 및 DB 업데이트
+            String imageUrl = "/uploads/profile/" + fileName;
+            userService.updateProfileImage(userId, imageUrl);
+
+            // 6. 클라이언트에 응답
+            return ResponseEntity.ok(Map.of("profileImageUrl", imageUrl));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("이미지 업로드 실패: " + e.getMessage());
+        }
     }
 }
 
