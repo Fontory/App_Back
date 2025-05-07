@@ -93,6 +93,10 @@ public class UserController {
         // 접근 가능한 URL 반환
         String profileImage = "http://ceprj.gachon.ac.kr:60023/profile/" + fileName;
 
+        System.out.println("✅ 업로드 성공: " + fileName);
+        System.out.println("✅ 저장 위치: " + filePath);
+        System.out.println("✅ 응답 URL: " + profileImage);
+
         return ResponseEntity.ok(profileImage);
     }
 }
