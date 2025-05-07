@@ -31,7 +31,11 @@ spring:
 server:
   port: 60023
 
-# Swagger ?? (??)
+jwt:
+  secret: N1y!$7uG9!zL@Xk9^+hYtP%29&R$8pWv3
+  expirationMs: 3600000  # 1시간 (1000ms * 60s * 60min)
+
+# Swagger
 springdoc:
   api-docs:
     path: /api-docs

@@ -1,5 +1,8 @@
 package com.fontservice.fontory.security;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
@@ -7,8 +10,12 @@ import java.util.Date;
 
 @Component
 public class JwtUtil {
-    private final String secretKey = "your-secret-key"; // 환경변수로 분리 권장
-    private final long expirationMs = 1000 * 60 * 60; // 1시간
+
+    @Value("${jwt.secret}")
+    private String secretKey;
+
+    @Value("${jwt.expirationMs}")
+    private long expirationMs;
 
     public String createToken(String userId) {
         return Jwts.builder()
