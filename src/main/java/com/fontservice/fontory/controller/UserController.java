@@ -79,30 +79,24 @@ public class UserController {
     @PostMapping("/uploadProfile")
     @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지를 업로드하고, 접근 가능한 URL을 반환합니다.")
     public ResponseEntity<String> uploadProfileImage(@RequestParam("file") MultipartFile file) throws IOException {
-
-        // 1. 파일명 생성
         String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-
-        // 2. 저장 디렉터리 & 경로 설정
         String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile/";
         File dir = new File(uploadDir);
-        if (!dir.exists()) {
-            dir.mkdirs();
-            System.out.println("📁 디렉터리 생성됨: " + uploadDir);
+        if (!dir.exists()) dir.mkdirs();
+
+        File destination = new File(uploadDir + fileName);
+
+        // ⭐ 핵심: transferTo 말고 직접 저장
+        try (InputStream in = file.getInputStream(); OutputStream out = new FileOutputStream(destination)) {
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = in.read(buffer)) != -1) {
+                out.write(buffer, 0, length);
+            }
         }
 
-        // 3. 저장할 파일 경로
-        String filePath = uploadDir + fileName;
-        System.out.println("📝 저장할 파일 경로: " + filePath);
-
-        // 4. 실제 파일 저장
-        file.transferTo(new File(filePath));
-        System.out.println("✅ 파일 저장 완료: " + fileName);
-
-        // 5. 접근 가능한 URL 생성
         String profileImageUrl = "http://ceprj.gachon.ac.kr:60023/profile/" + fileName;
-        System.out.println("🌐 프론트에 전달할 URL: " + profileImageUrl);
-
+        System.out.println("✅ 저장 완료! URL: " + profileImageUrl);
         return ResponseEntity.ok(profileImageUrl);
     }
 }
