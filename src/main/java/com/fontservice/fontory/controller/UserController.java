@@ -91,9 +91,9 @@ public class UserController {
         file.transferTo(new File(filePath));
 
         // 접근 가능한 URL 반환
-        String fileUrl = "http://ceprj.gachon.ac.kr:60023/profile/" + fileName;
+        String profileImage = "http://ceprj.gachon.ac.kr:60023/profile/" + fileName;
 
-        return ResponseEntity.ok(fileUrl);
+        return ResponseEntity.ok(profileImage);
     }
 }
 
