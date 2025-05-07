@@ -7,9 +7,11 @@ import com.fontservice.fontory.dto.mypage.ProfileResponseDto;
 import com.fontservice.fontory.dto.mypage.ProfileUpdateRequestDto;
 import com.fontservice.fontory.dto.user.*;
 import com.fontservice.fontory.repository.UserRepository;
+import com.fontservice.fontory.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -19,6 +21,8 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
 
     //로그인 기능
     public User login(LoginRequestDto request, HttpSession session) {
@@ -34,37 +38,44 @@ public class UserService {
     }
 
     //회원가입 기능
-    public SignupResponseDto signup(SignupRequestDto dto) {
-        //아이디 중복 확인
-        if (userRepository.findByUserId(dto.getUserId()).isPresent()) {
-            return new SignupResponseDto(500, "이미 존재하는 ID입니다.");
+        public SignupResponseDto signup(SignupRequestDto dto) {
+            // 아이디 중복 확인
+            if (userRepository.findByUserId(dto.getUserId()).isPresent()) {
+                return new SignupResponseDto(409, "이미 존재하는 ID입니다.", null);
+            }
+
+            // 이메일 중복 확인
+            if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
+                return new SignupResponseDto(409, "이미 존재하는 이메일입니다.", null);
+            }
+
+            // 비밀번호 불일치
+            if (!dto.getPassword().equals(dto.getPasswordConfirm())) {
+                return new SignupResponseDto(400, "비밀번호가 일치하지 않습니다.", null);
+            }
+
+            // 비밀번호 암호화
+            String encodedPassword = passwordEncoder.encode(dto.getPassword());
+
+            User user = User.builder()
+                    .userId(dto.getUserId())
+                    .password(encodedPassword)
+                    .name(dto.getName())
+                    .phone(dto.getPhone())
+                    .email(dto.getEmail())
+                    .nickname(dto.getNickname())
+                    .profileImage(dto.getProfileImage())
+                    .role(UserRole.USER)
+                    .status(UserStatus.ACTIVE)
+                    .build();
+
+            userRepository.save(user);
+
+            // JWT 토큰 발급
+            String accessToken = jwtUtil.createToken(user.getUserId());
+
+            return new SignupResponseDto(200, "회원가입이 완료되었습니다.", accessToken);
         }
-
-        //이메일 중복 확인
-        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-            return new SignupResponseDto(500, "이미 존재하는 이메일입니다.");
-        }
-
-        // 비밀번호 확인 불일치
-        if (!dto.getPassword().equals(dto.getPasswordConfirm())) {
-            return new SignupResponseDto(500, "비밀번호가 일치하지 않습니다.");
-        }
-
-        User user = User.builder()
-                .userId(dto.getUserId())
-                .password(dto.getPassword())
-                .name(dto.getName())
-                .phone(dto.getPhone())
-                .email(dto.getEmail())
-                .nickname(dto.getNickname())
-                .profileImage(dto.getProfileImage())
-                .role(UserRole.USER) //고정
-                .status(UserStatus.ACTIVE) //고정
-                .build();
-
-        userRepository.save(user);
-        return new SignupResponseDto(200, "회원가입이 완료되었습니다.");
-    }
 
     //로그아웃 기능
     public LogoutResponseDto logout(HttpSession session) {

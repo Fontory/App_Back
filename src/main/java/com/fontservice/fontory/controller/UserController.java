@@ -78,26 +78,24 @@ public class UserController {
     public ResponseEntity<String> uploadProfileImage(
             @RequestParam("file") MultipartFile file) throws IOException {
 
-        // 저장 경로 설정
-        String uploadDir = "./uploads/profile/";
-        File dir = new File(uploadDir);
-        if (!dir.exists()) dir.mkdirs(); // 폴더 없으면 생성
-
-        // 파일명 생성 (UUID_원본이름)
+        // 1. 파일명 생성
         String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+
+        // 2. 저장 디렉터리 & 경로 설정
+        String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile/";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) dir.mkdirs(); // 없으면 생성
+
+        // 3. 저장할 파일 경로
         String filePath = uploadDir + fileName;
 
-        // 파일 저장
+        // 4. 실제 파일 저장
         file.transferTo(new File(filePath));
 
-        // 접근 가능한 URL 반환
-        String profileImage = "http://ceprj.gachon.ac.kr:60023/profile/" + fileName;
+        // 5. 접근 가능한 URL 생성
+        String profileImageUrl = "http://ceprj.gachon.ac.kr:60023/profile/" + fileName;
 
-        System.out.println("✅ 업로드 성공: " + fileName);
-        System.out.println("✅ 저장 위치: " + filePath);
-        System.out.println("✅ 응답 URL: " + profileImage);
-
-        return ResponseEntity.ok(profileImage);
+        return ResponseEntity.ok(profileImageUrl);
     }
 }
 
