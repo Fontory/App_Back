@@ -9,9 +9,9 @@ spring:
     activate:
       on-profile: local
 
-    servlet:
-      multipart:
-        location: /home/t25123/v0.5src/mobile/App_Back/uploads/tmp
+  web:
+    resources:
+      static-locations: file:/home/t25123/v0.5src/mobile/App_Back/uploads/
 
   datasource:
     url: jdbc:mariadb://localhost:3306/db25123
