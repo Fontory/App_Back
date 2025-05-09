@@ -154,36 +154,25 @@ public class UserService {
     }
 
     public String storeProfileImage(MultipartFile file, HttpSession session) throws IOException {
-        // 1. 세션에서 userId 꺼내기
-        String userId = (String) session.getAttribute("userId");
-        if (userId == null) {
-            throw new IllegalStateException("세션에 userId가 없습니다.");
-        }
-
-        // 2. 저장 디렉토리
+        // 1. 저장 디렉토리 설정
         String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile";
         File dir = new File(uploadDir);
         if (!dir.exists()) dir.mkdirs();
 
-        // 3. 파일 이름
-        String fileName = UUID.randomUUID() + "_" + userId + ".jpg";
+        // 2. 파일 이름 생성 (UUID 기반)
+        String fileName = UUID.randomUUID().toString() + ".jpg";
         String savePath = uploadDir + File.separator + fileName;
 
-        // 4. 저장
+        // 3. 저장
         file.transferTo(new File(savePath));
 
-        // 5. URL 생성
+        // 4. URL 생성
         String imageUrl = "/uploads/profile/" + fileName;
 
-        // 6. DB 업데이트
-        User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 유저 없음"));
-        user.setProfileImage(imageUrl);
-        userRepository.save(user);
+        // 5. 세션에 저장
+        session.setAttribute("profileImageUrl", imageUrl);
 
         return imageUrl;
     }
-
-
 
 }
