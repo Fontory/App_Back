@@ -10,5 +10,4 @@ import lombok.Setter;
 public class SignupResponseDto {
     private Integer status;   // 200 or 500
     private String message;
-    private String accessToken;
 }

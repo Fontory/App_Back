@@ -14,8 +14,12 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -42,17 +46,17 @@ public class UserService {
         public SignupResponseDto signup(SignupRequestDto dto) {
             // 아이디 중복 확인
             if (userRepository.findByUserId(dto.getUserId()).isPresent()) {
-                return new SignupResponseDto(409, "이미 존재하는 ID입니다.", null);
+                return new SignupResponseDto(409, "이미 존재하는 ID입니다.");
             }
 
             // 이메일 중복 확인
             if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-                return new SignupResponseDto(409, "이미 존재하는 이메일입니다.", null);
+                return new SignupResponseDto(409, "이미 존재하는 이메일입니다.");
             }
 
             // 비밀번호 불일치
             if (!dto.getPassword().equals(dto.getPasswordConfirm())) {
-                return new SignupResponseDto(400, "비밀번호가 일치하지 않습니다.", null);
+                return new SignupResponseDto(400, "비밀번호가 일치하지 않습니다.");
             }
 
             // 비밀번호 암호화
@@ -72,10 +76,7 @@ public class UserService {
 
             userRepository.save(user);
 
-            // JWT 토큰 발급
-            String accessToken = jwtUtil.createToken(user.getUserId());
-
-            return new SignupResponseDto(200, "회원가입이 완료되었습니다.", accessToken);
+            return new SignupResponseDto(200, "회원가입이 완료되었습니다.");
         }
 
     //로그아웃 기능
@@ -145,11 +146,37 @@ public class UserService {
         userRepository.save(user);
     }
 
-    @Transactional
-    public void updateProfileImage(String userId, String imageUrl) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+    public String storeProfileImage(MultipartFile file, HttpSession session) throws IOException {
+        // 1. 세션에서 userId 꺼내기
+        String userId = (String) session.getAttribute("userId");
+        if (userId == null) {
+            throw new IllegalStateException("세션에 userId가 없습니다.");
+        }
+
+        // 2. 저장 디렉토리
+        String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) dir.mkdirs();
+
+        // 3. 파일 이름
+        String fileName = UUID.randomUUID() + "_" + userId + ".jpg";
+        String savePath = uploadDir + File.separator + fileName;
+
+        // 4. 저장
+        file.transferTo(new File(savePath));
+
+        // 5. URL 생성
+        String imageUrl = "/uploads/profile/" + fileName;
+
+        // 6. DB 업데이트
+        User user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 유저 없음"));
         user.setProfileImage(imageUrl);
         userRepository.save(user);
+
+        return imageUrl;
     }
+
+
+
 }

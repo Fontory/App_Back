@@ -83,34 +83,13 @@ public class UserController {
 
     @PostMapping("/profile-image")
     public ResponseEntity<?> uploadProfileImage(@RequestParam("image") MultipartFile file,
-                                                HttpServletRequest request) {
+                                                HttpSession session) {
         try {
-            // 1. JWT에서 userId 추출
-            String userId = jwtUtil.getUserIdFromRequest(request);
-
-            // 2. 저장할 경로 설정
-            String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile";
-            File dir = new File(uploadDir);
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-
-            // 3. 파일 이름 설정
-            String fileName = UUID.randomUUID().toString() + "_" + userId + ".jpg";
-            String savePath = uploadDir + File.separator + fileName;
-
-            // 4. 파일 저장
-            file.transferTo(new File(savePath));
-
-            // 5. URL 생성 및 DB 업데이트
-            String imageUrl = "/uploads/profile/" + fileName;
-            userService.updateProfileImage(userId, imageUrl);
-
-            // 6. 클라이언트에 응답
+            String imageUrl = userService.storeProfileImage(file, session);
             return ResponseEntity.ok(Map.of("profileImageUrl", imageUrl));
-
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("이미지 업로드 실패: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("이미지 업로드 실패: " + e.getMessage());
         }
     }
 }
