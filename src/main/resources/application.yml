@@ -2,12 +2,6 @@ spring:
   profiles:
     active: local
 
----
-
-  config:
-    activate:
-      on-profile: local
-
   servlet:
     multipart:
       max-file-size: 5MB
@@ -28,9 +22,9 @@ spring:
         dialect: org.hibernate.dialect.MariaDBDialect
     open-in-view: false
 
-  logging:
-    level:
-      org.hibernate.SQL: debug
+logging:
+  level:
+    org.hibernate.SQL: debug
 
 server:
   port: 60023
