@@ -12,12 +12,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,42 +44,47 @@ public class UserService {
         return user;
     }
 
-    //회원가입 기능
-        public SignupResponseDto signup(SignupRequestDto dto) {
-            // 아이디 중복 확인
-            if (userRepository.findByUserId(dto.getUserId()).isPresent()) {
-                return new SignupResponseDto(409, "이미 존재하는 ID입니다.");
-            }
-
-            // 이메일 중복 확인
-            if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
-                return new SignupResponseDto(409, "이미 존재하는 이메일입니다.");
-            }
-
-            // 비밀번호 불일치
-            if (!dto.getPassword().equals(dto.getPasswordConfirm())) {
-                return new SignupResponseDto(400, "비밀번호가 일치하지 않습니다.");
-            }
-
-            // 비밀번호 암호화
-            String encodedPassword = passwordEncoder.encode(dto.getPassword());
-
-            User user = User.builder()
-                    .userId(dto.getUserId())
-                    .password(encodedPassword)
-                    .name(dto.getName())
-                    .phone(dto.getPhone())
-                    .email(dto.getEmail())
-                    .nickname(dto.getNickname())
-                    .profileImage(dto.getProfileImage())
-                    .role(UserRole.USER)
-                    .status(UserStatus.ACTIVE)
-                    .build();
-
-            userRepository.save(user);
-
-            return new SignupResponseDto(200, "회원가입이 완료되었습니다.");
+    public ResponseEntity<Map<String, Object>> signup(SignupRequestDto dto) {
+        // 아이디 중복 확인
+        if (userRepository.findByUserId(dto.getUserId()).isPresent()) {
+            return ResponseEntity.status(409).body(
+                    Map.of("status", 409, "message", "이미 존재하는 ID입니다.")
+            );
         }
+
+        // 이메일 중복 확인
+        if (userRepository.findByEmail(dto.getEmail()).isPresent()) {
+            return ResponseEntity.status(409).body(
+                    Map.of("status", 409, "message", "이미 존재하는 이메일입니다.")
+            );
+        }
+
+        // 비밀번호 불일치
+        if (!dto.getPassword().equals(dto.getPasswordConfirm())) {
+            return ResponseEntity.status(400).body(
+                    Map.of("status", 400, "message", "비밀번호가 일치하지 않습니다.")
+            );
+        }
+
+        // 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(dto.getPassword());
+
+        User user = User.builder()
+                .userId(dto.getUserId())
+                .password(encodedPassword)
+                .name(dto.getName())
+                .phone(dto.getPhone())
+                .email(dto.getEmail())
+                .nickname(dto.getNickname())
+                .profileImage(dto.getProfileImage())
+                .role(UserRole.USER)
+                .status(UserStatus.ACTIVE)
+                .build();
+
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of("status", 200, "message", "회원가입이 완료되었습니다."));
+    }
 
     //로그아웃 기능
     public LogoutResponseDto logout(HttpSession session) {

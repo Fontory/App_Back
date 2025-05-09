@@ -51,9 +51,12 @@ public class UserController {
 
     @PostMapping("/signup")
     @Operation(summary = "회원가입", description = "사용자 정보를 기반으로 회원가입합니다.")
-    public ResponseEntity<SignupResponseDto> signup(@RequestBody SignupRequestDto requestDto) {
-        SignupResponseDto result = userService.signup(requestDto);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<Map<String, Object>> signup(@RequestBody SignupRequestDto requestDto,
+                                                      HttpSession session) {
+        String profileImageUrl = (String) session.getAttribute("profileImageUrl");
+        requestDto.setProfileImage(profileImageUrl);
+
+        return userService.signup(requestDto);
     }
 
     @PostMapping("/logout")
