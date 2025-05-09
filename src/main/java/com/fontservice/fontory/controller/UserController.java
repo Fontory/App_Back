@@ -89,10 +89,17 @@ public class UserController {
                                                 HttpSession session) {
         try {
             String imageUrl = userService.storeProfileImage(file, session);
-            return ResponseEntity.ok(Map.of("profileImageUrl", imageUrl));
+            return ResponseEntity.ok(Map.of(
+                    "status", 200,
+                    "message", "프로필 이미지 업로드 성공",
+                    "profileImageUrl", imageUrl
+            ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("이미지 업로드 실패: " + e.getMessage());
+                    .body(Map.of(
+                            "status", 500,
+                            "message", "이미지 업로드 실패: " + e.getMessage()
+                    ));
         }
     }
 }
