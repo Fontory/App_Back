@@ -2,6 +2,8 @@ spring:
   profiles:
     active: local
 
+---
+
   config:
     activate:
       on-profile: local
