@@ -104,26 +104,19 @@ public class UserService {
     }
 
     //비밀번호 찾기
-    public PasswordChangeResponseDto changePassword(
-            PasswordChangeRequestDto dto, HttpSession session) {
+    public boolean resetPassword(PasswordChangeRequestDto request) {
+        Optional<User> optionalUser = userRepository.findByUserIdAndEmail(request.getUserId(), request.getEmail());
 
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            return new PasswordChangeResponseDto(500, "로그인된 사용자가 아닙니다.");
+        if (optionalUser.isEmpty()) {
+            return false;
         }
 
-        if (!user.getPassword().equals(dto.getCurrentPassword())) {
-            return new PasswordChangeResponseDto(500, "현재 비밀번호가 일치하지 않습니다.");
-        }
-
-        if (!dto.getNewPassword().equals(dto.getNewPasswordConfirm())) {
-            return new PasswordChangeResponseDto(500, "새 비밀번호가 서로 다릅니다.");
-        }
-
-        user.setPassword(dto.getNewPassword());
+        User user = optionalUser.get();
+        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+        user.setPassword(encodedPassword);
         userRepository.save(user);
 
-        return new PasswordChangeResponseDto(200, "비밀번호가 성공적으로 변경되었습니다.");
+        return true;
     }
 
     public User getSessionUser(HttpServletRequest request) {

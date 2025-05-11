@@ -75,13 +75,19 @@ public class UserController {
 
 
     @PutMapping("/findPassword")
-    @Operation(summary = "비밀번호 변경", description = "현재 비밀번호와 새 비밀번호를 입력하여 비밀번호를 변경합니다.")
-    public ResponseEntity<PasswordChangeResponseDto> changePassword(
-            @RequestBody PasswordChangeRequestDto requestDto,
-            HttpSession session) {
+    @Operation(summary = "비밀번호 재설정", description = "ID와 Email 일치시 새 비밀번호를 입력하여 변경합니다.")
+    public ResponseEntity<PasswordChangeResponseDto> resetPassword(@RequestBody PasswordChangeRequestDto request) {
+        boolean result = userService.resetPassword(request);
 
-        PasswordChangeResponseDto result = userService.changePassword(requestDto, session);
-        return ResponseEntity.ok(result);
+        if (result) {
+            return ResponseEntity.ok(
+                    new PasswordChangeResponseDto(200, "비밀번호가 성공적으로 변경되었습니다.")
+            );
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    new PasswordChangeResponseDto(400, "아이디와 이메일이 일치하지 않습니다.")
+            );
+        }
     }
 
     @PostMapping("/profile-image")
