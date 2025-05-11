@@ -39,7 +39,7 @@ public class User {
     @Column(name = "profile_image", length = 255)
     private String profileImage;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = UserRoleConverter.class)
     @Column(nullable = false)
     private UserRole role;
 
