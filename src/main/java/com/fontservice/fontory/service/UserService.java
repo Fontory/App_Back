@@ -28,7 +28,6 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final JwtUtil jwtUtil;
     private final PasswordEncoder passwordEncoder;
 
     //로그인 기능
@@ -36,7 +35,7 @@ public class UserService {
         User user = userRepository.findByUserId(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("아이디가 존재하지 않습니다."));
 
-        if (!user.getPassword().equals(request.getPassword())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
 
