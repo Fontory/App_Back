@@ -7,4 +7,6 @@ public class ProfileUpdateRequestDto {
     private String nickname;
     private String email;
     private String profileImage;
+    private String name;
+    private String phone;
 }

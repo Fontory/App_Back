@@ -17,12 +17,11 @@ public class QuoteController {
 
     @GetMapping("/today")
     public QuoteResponse getTodayQuote() {
-        Quote quote = quoteRepository.findTopByOrderByCreatedAtDesc();
+        Quote quote = quoteRepository.findRandomQuote();
 
         return QuoteResponse.builder()
                 .quoteId(quote.getQuoteId())
                 .content(quote.getContent())
-                .createdAt(quote.getCreatedAt())
                 .build();
     }
 }

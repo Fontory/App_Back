@@ -7,10 +7,8 @@ import com.fontservice.fontory.dto.mypage.ProfileResponseDto;
 import com.fontservice.fontory.dto.mypage.ProfileUpdateRequestDto;
 import com.fontservice.fontory.dto.user.*;
 import com.fontservice.fontory.repository.UserRepository;
-import com.fontservice.fontory.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -38,8 +36,9 @@ public class UserService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("비밀번호가 일치하지 않습니다.");
         }
-
+        session.setAttribute("userId", user.getUserId());
         session.setAttribute("user", user); // 로그인 세션 저장
+
         return user;
     }
 
@@ -122,12 +121,16 @@ public class UserService {
         return (User) request.getSession().getAttribute("user");
     }
 
+
+
     //mypage - 프로필 조회
     public ProfileResponseDto getProfile(User user) {
         return new ProfileResponseDto(
                 user.getNickname(),
                 user.getEmail(),
-                user.getProfileImage()
+                user.getProfileImage(),
+                user.getName(),
+                user.getPhone()
         );
     }
 
@@ -139,32 +142,78 @@ public class UserService {
         if (dto.getEmail() != null) {
             user.setEmail(dto.getEmail());
         }
-        if (dto.getProfileImage() != null) {
-            user.setProfileImage(dto.getProfileImage());
-        }
-        userRepository.save(user);
+        if (dto.getName() != null) {
+        user.setName(dto.getName());
     }
+        if (dto.getPhone() != null) {
+        user.setPhone(dto.getPhone());
+    }
+        userRepository.save(user);
+}
 
-    public String storeProfileImage(MultipartFile file, HttpSession session) throws IOException {
-        // 1. 저장 디렉토리 설정
+    // 회원가입용 이미지 업로드 로직
+    public String storeProfileImageForSignup(MultipartFile file, HttpSession session) throws IOException {
+
+        //저장 디렉토리 설정
         String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile";
         File dir = new File(uploadDir);
         if (!dir.exists()) dir.mkdirs();
 
-        // 2. 파일 이름 생성 (UUID 기반)
+        //파일 이름 생성 (UUID 기반)
         String fileName = UUID.randomUUID().toString() + ".jpg";
         String savePath = uploadDir + File.separator + fileName;
 
-        // 3. 저장
+        //저장
         file.transferTo(new File(savePath));
 
-        // 4. URL 생성
+        //URL 생성
         String imageUrl = "/uploads/profile/" + fileName;
 
-        // 5. 세션에 저장
+        //세션 갱신
         session.setAttribute("profileImageUrl", imageUrl);
 
         return imageUrl;
     }
 
+    // 마이페이지용 이미지 삭제 및 재업로드 로직
+    public String storeProfileImage(MultipartFile file, HttpSession session) throws IOException {
+
+        String userId = (String) session.getAttribute("userId");
+        if (userId == null) {
+            throw new IllegalStateException("세션에 userId가 없습니다.");
+        }
+
+        // 저장 디렉토리
+        String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) dir.mkdirs();
+
+        // 기존 이미지 삭제
+        User user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 유저 없음"));
+
+        String oldImageUrl = user.getProfileImage();
+        if (oldImageUrl != null && oldImageUrl.startsWith("/uploads/profile/")) {
+            String oldFilePath = uploadDir + File.separator + oldImageUrl.substring("/uploads/profile/".length());
+            File oldFile = new File(oldFilePath);
+            if (oldFile.exists()) {
+                oldFile.delete();
+            }
+        }
+
+        // 새 파일 이름 생성 및 저장
+        String fileName = UUID.randomUUID().toString() + ".jpg";
+        String savePath = uploadDir + File.separator + fileName;
+        file.transferTo(new File(savePath));
+
+        // 새 이미지 URL 생성
+        String imageUrl = "/uploads/profile/" + fileName;
+        user.setProfileImage(imageUrl);
+        userRepository.save(user);
+
+        // 세션 갱신
+        session.setAttribute("user", user);
+
+        return imageUrl;
+    }
 }

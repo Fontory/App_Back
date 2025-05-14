@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -25,10 +26,14 @@ public class PostController {
     @PostMapping
     @Operation(summary = "게시물 작성", description = "로그인한 사용자가 필사 or 일반 게시물을 작성합니다.")
     public ResponseEntity<SimpleResponseDto> createPost(
-            @RequestBody PostCreateRequestDto requestDto,
+            @RequestParam("imageFile") MultipartFile imageFile,
+            @RequestParam("content") String content,
+            @RequestParam("postType") String postType,
+            @RequestParam("fontId") Integer fontId,
             HttpSession session) {
 
-        return ResponseEntity.ok(postService.createPost(requestDto, session));
+        PostCreateRequestDto dto = new PostCreateRequestDto(content, postType, fontId);
+        return ResponseEntity.ok(postService.createPost(dto, imageFile, session));
     }
 
     @GetMapping

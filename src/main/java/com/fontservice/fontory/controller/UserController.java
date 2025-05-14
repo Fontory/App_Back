@@ -2,10 +2,8 @@ package com.fontservice.fontory.controller;
 
 import com.fontservice.fontory.domain.User;
 import com.fontservice.fontory.dto.user.*;
-import com.fontservice.fontory.security.JwtUtil;
 import com.fontservice.fontory.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,13 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/users")
@@ -27,7 +19,6 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
-    private final JwtUtil jwtUtil;
 
     @PostMapping("/login")
     @Operation(summary = "로그인", description = "userId와 password로 로그인합니다.")
@@ -90,21 +81,21 @@ public class UserController {
         }
     }
 
-    @PostMapping("/profile-image")
-    public ResponseEntity<?> uploadProfileImage(@RequestParam("image") MultipartFile file,
-                                                HttpSession session) {
+    @PostMapping("/profile-image/signup")
+    @Operation(summary = "회원가입 시 프로필 이미지 업로드", description = "사용자가 이미지 파일을 업로드하여 회원가입 합니다.")
+    public ResponseEntity<?> uploadProfileImageForSignup(@RequestParam("image") MultipartFile file, HttpSession session) {
         try {
-            String imageUrl = userService.storeProfileImage(file, session);
+            String imageUrl = userService.storeProfileImageForSignup(file, session);
             return ResponseEntity.ok(Map.of(
                     "status", 200,
-                    "message", "프로필 이미지 업로드 성공",
+                    "message", "회원가입용 프로필 이미지 업로드 성공",
                     "profileImageUrl", imageUrl
             ));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of(
                             "status", 500,
-                            "message", "이미지 업로드 실패: " + e.getMessage()
+                            "message", "회원가입 이미지 업로드 실패: " + e.getMessage()
                     ));
         }
     }

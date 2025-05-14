@@ -24,8 +24,4 @@ public class Quote {
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
 }

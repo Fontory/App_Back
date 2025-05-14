@@ -15,9 +15,13 @@ import com.fontservice.fontory.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/mypage")
@@ -66,7 +70,7 @@ public class MyPageController {
     }
 
     @PutMapping("/profile")
-    @Operation(summary = "사용자 프로필 수정", description = "사용자가 수정하길 원하는 필드만 수정 가능합니다.")
+    @Operation(summary = "사용자 프로필 수정", description = "사용자가 수정하길 원하는 텍스트 정보를 수정 가능합니다.")
     public SimpleResponseDto<?> updateProfile(@RequestBody ProfileUpdateRequestDto dto, HttpSession session) {
         User user = (User) session.getAttribute("user");
         if (user == null) {
@@ -75,6 +79,26 @@ public class MyPageController {
 
         userService.updateProfile(user, dto);
         return new SimpleResponseDto<>(200, "프로필 수정 성공", null);
+    }
+
+    @PostMapping("/profile-image")
+    @Operation(summary = "사용자 프로필 이미지 수정", description = "사용자가 프로필 이미지를 업로드해서 수정합니다.")
+    public ResponseEntity<?> uploadProfileImage(@RequestParam("image") MultipartFile file,
+                                                HttpSession session) {
+        try {
+            String imageUrl = userService.storeProfileImage(file, session);
+            return ResponseEntity.ok(Map.of(
+                    "status", 200,
+                    "message", "프로필 이미지 수정 성공",
+                    "profileImageUrl", imageUrl
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "status", 500,
+                            "message", "이미지 업로드 실패: " + e.getMessage()
+                    ));
+        }
     }
 
     @GetMapping("/badges")

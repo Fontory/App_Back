@@ -11,15 +11,18 @@ import com.fontservice.fontory.dto.post.PostListResponseDto;
 import com.fontservice.fontory.dto.post.PostListWrapperResponseDto;
 import com.fontservice.fontory.repository.PostLikeRepository;
 import com.fontservice.fontory.repository.PostRepository;
-import com.fontservice.fontory.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,11 +31,10 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
-    private final UserRepository userRepository;
     private final BadgeService badgeService;
 
     //게시물 글 작성
-    public SimpleResponseDto createPost(PostCreateRequestDto dto, HttpSession session) {
+    public SimpleResponseDto createPost(PostCreateRequestDto dto, MultipartFile imageFile, HttpSession session) {
         User user = (User) session.getAttribute("user");
         if (user == null) {
             return new SimpleResponseDto(500, "로그인이 필요합니다.", null);
@@ -45,9 +47,25 @@ public class PostService {
             return new SimpleResponseDto(500, "유효하지 않은 게시글 유형입니다.", null);
         }
 
+        // 이미지 파일 업로드 처리
+        String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/post";
+        File dir = new File(uploadDir);
+        if (!dir.exists()) dir.mkdirs();
+
+        String fileName = UUID.randomUUID().toString() + ".jpg";
+        String savePath = uploadDir + File.separator + fileName;
+
+        try {
+            imageFile.transferTo(new File(savePath));
+        } catch (IOException e) {
+            return new SimpleResponseDto(500, "이미지 업로드 실패: " + e.getMessage(), null);
+        }
+
+        String imageUrl = "/uploads/post/" + fileName;
+
         Post post = Post.builder()
                 .user(user)
-                .imageUrl(dto.getImageUrl())
+                .imageUrl(imageUrl)
                 .content(dto.getContent())
                 .postType(type)
                 .fontId(dto.getFontId())

@@ -10,5 +10,4 @@ import java.time.LocalDateTime;
 public class QuoteResponse {
     private Integer quoteId;
     private String content;
-    private LocalDateTime createdAt;
 }
