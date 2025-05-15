@@ -4,6 +4,7 @@ import com.fontservice.fontory.domain.Font;
 import com.fontservice.fontory.domain.FontLike;
 import com.fontservice.fontory.domain.SavedFont;
 import com.fontservice.fontory.dto.font.FontDetailResponse;
+import com.fontservice.fontory.dto.font.FontWithUserProfileResponse;
 import com.fontservice.fontory.dto.font.MyFontResponse;
 import com.fontservice.fontory.repository.FontLikeRepository;
 import com.fontservice.fontory.repository.FontRepository;
@@ -33,13 +34,39 @@ public class FontController {
 
     //모든 사용자의 공개폰트 인기순/최신순 정렬
     @GetMapping
-    public List<Font> getFonts(@RequestParam(name = "sort", required = false, defaultValue = "latest") String sort) {
+    public List<FontWithUserProfileResponse> getFonts(
+            @RequestParam(name = "sort", required = false, defaultValue = "latest") String sort) {
+        List<Font> fonts;
+
         if ("popular".equalsIgnoreCase(sort)) {
-            return fontRepository.findByIsPublicOrderByLikeCountDesc(Font.PublicStatus.Y);
+            fonts = fontRepository.findWithUserByIsPublicOrderByLikeCountDesc(Font.PublicStatus.Y);
         } else {
-            return fontRepository.findByIsPublicOrderByCreatedAtDesc(Font.PublicStatus.Y);
+            fonts = fontRepository.findWithUserByIsPublicOrderByCreatedAtDesc(Font.PublicStatus.Y);
         }
+
+
+        List<FontWithUserProfileResponse> responseList = new ArrayList<>();
+        for (Font font : fonts) {
+            var user = font.getUser(); // Font에 연관된 User 객체
+            responseList.add(new FontWithUserProfileResponse(
+                    font.getFontId(),
+                    font.getName(),
+                    font.getOtfUrl(),
+                    font.getTtfUrl(),
+                    font.getDescription(),
+                    font.getOriginalImageUrl(),
+                    user.getUserId(),
+                    user.getNickname(),
+                    user.getProfileImage(),
+                    font.getLikeCount(),
+                    font.getDownloadCount(),
+                    font.getCreatedAt().toString()
+            ));
+        }
+
+        return responseList;
     }
+
 
     //로그인된 사용자의 비공개 폰트리스트 로드
     @GetMapping("/private")

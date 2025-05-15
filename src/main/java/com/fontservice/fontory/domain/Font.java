@@ -3,6 +3,7 @@ package com.fontservice.fontory.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import com.fontservice.fontory.domain.User; //유저 프로필 join에 쓰임
 
 @Entity
 @Getter
@@ -20,6 +21,11 @@ public class Font {
 
     @Column(name = "user_id", nullable = false, length = 30)
     private String userId;
+
+    //유저프로필 join
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    private User user;
 
     @Column(nullable = false, length = 100)
     private String name;

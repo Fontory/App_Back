@@ -22,6 +22,10 @@ spring:
         dialect: org.hibernate.dialect.MariaDBDialect
     open-in-view: false
 
+  jackson:
+    mapper:
+      ACCEPT_CASE_INSENSITIVE_ENUMS: true
+
 logging:
   level:
     org.hibernate.SQL: debug
