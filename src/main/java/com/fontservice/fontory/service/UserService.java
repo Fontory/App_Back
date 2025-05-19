@@ -167,7 +167,7 @@ public class UserService {
         file.transferTo(new File(savePath));
 
         //URL 생성
-        String imageUrl = "/uploads/profile/" + fileName;
+        String imageUrl = fileName;
 
         //세션 갱신
         session.setAttribute("profileImageUrl", imageUrl);
@@ -193,9 +193,8 @@ public class UserService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저 없음"));
 
         String oldImageUrl = user.getProfileImage();
-        if (oldImageUrl != null && oldImageUrl.startsWith("/uploads/profile/")) {
-            String oldFilePath = uploadDir + File.separator + oldImageUrl.substring("/uploads/profile/".length());
-            File oldFile = new File(oldFilePath);
+        if (oldImageUrl != null) {
+            File oldFile = new File(uploadDir + File.separator + oldImageUrl);
             if (oldFile.exists()) {
                 oldFile.delete();
             }
@@ -206,14 +205,12 @@ public class UserService {
         String savePath = uploadDir + File.separator + fileName;
         file.transferTo(new File(savePath));
 
-        // 새 이미지 URL 생성
-        String imageUrl = "/uploads/profile/" + fileName;
-        user.setProfileImage(imageUrl);
+        user.setProfileImage(fileName);
         userRepository.save(user);
 
         // 세션 갱신
         session.setAttribute("user", user);
 
-        return imageUrl;
+        return fileName;
     }
 }
