@@ -3,23 +3,37 @@ package com.fontservice.fontory.controller;
 import com.fontservice.fontory.domain.Font;
 import com.fontservice.fontory.domain.FontLike;
 import com.fontservice.fontory.domain.SavedFont;
+import com.fontservice.fontory.domain.User;
 import com.fontservice.fontory.dto.font.FontDetailResponse;
 import com.fontservice.fontory.dto.font.FontWithUserProfileResponse;
 import com.fontservice.fontory.dto.font.MyFontResponse;
 import com.fontservice.fontory.repository.FontLikeRepository;
 import com.fontservice.fontory.repository.FontRepository;
 import com.fontservice.fontory.repository.SavedFontRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.imageio.ImageIO;
 
 //파일 다운로드
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
 import java.io.File;
+import java.io.FileInputStream;
+import java.time.LocalDateTime;
+
+import java.awt.image.BufferedImage;
+import java.awt.Graphics2D;
+import java.awt.Color;
+import java.awt.RenderingHints;
+
+
 
 
 
@@ -35,19 +49,29 @@ public class FontController {
     //모든 사용자의 공개폰트 인기순/최신순 정렬
     @GetMapping
     public List<FontWithUserProfileResponse> getFonts(
-            @RequestParam(name = "sort", required = false, defaultValue = "latest") String sort) {
-        List<Font> fonts;
+            @RequestParam(name = "sort", required = false, defaultValue = "latest") String sort,
+            HttpServletRequest request  // 세션에서 사용자 확인
+    ) {
+        // 로그인 유저 가져오기
+        User sessionUser = (User) request.getSession().getAttribute("user");
+        String userId = sessionUser != null ? sessionUser.getUserId() : null;
 
+        // 정렬조건에 따라 폰트 조회
+        List<Font> fonts;
         if ("popular".equalsIgnoreCase(sort)) {
             fonts = fontRepository.findWithUserByIsPublicOrderByLikeCountDesc(Font.PublicStatus.Y);
         } else {
             fonts = fontRepository.findWithUserByIsPublicOrderByCreatedAtDesc(Font.PublicStatus.Y);
         }
 
-
+        // 응답 DTO리스트 구성
         List<FontWithUserProfileResponse> responseList = new ArrayList<>();
         for (Font font : fonts) {
-            var user = font.getUser(); // Font에 연관된 User 객체
+            var user = font.getUser();
+
+            // 좋아요 여부 판단
+            boolean isLiked = userId != null && fontLikeRepository.existsByUserIdAndFontId(userId, font.getFontId());
+
             responseList.add(new FontWithUserProfileResponse(
                     font.getFontId(),
                     font.getName(),
@@ -60,12 +84,14 @@ public class FontController {
                     user.getProfileImage(),
                     font.getLikeCount(),
                     font.getDownloadCount(),
-                    font.getCreatedAt().toString()
+                    font.getCreatedAt().toString(),
+                    isLiked  // 좋아요 여부 포함
             ));
         }
 
         return responseList;
     }
+
 
 
     //로그인된 사용자의 비공개 폰트리스트 로드
@@ -98,7 +124,7 @@ public class FontController {
     }
 
     //폰트 상세페이지 불러오기
-    @GetMapping("/{fontId}")
+    @GetMapping("/api/{fontId}")
     public FontDetailResponse getFontDetail(@PathVariable("fontId") Integer fontId) {
         Font font = fontRepository.findById(fontId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다: " + fontId));
@@ -136,17 +162,25 @@ public class FontController {
 
     //TTF 파일 다운로드
     @GetMapping("/{fontId}/download/ttf")
-    public ResponseEntity<Resource> downloadTtf(@PathVariable Integer fontId) {
-        return downloadFontFile(fontId, "ttf");
+    public ResponseEntity<Resource> downloadTtf(
+            @PathVariable Integer fontId,
+            @RequestParam("userId") String userId
+    ) {
+        return downloadFontFile(fontId, "ttf", userId);
     }
 
-    //OTF 파일 다운로드
+
     @GetMapping("/{fontId}/download/otf")
-    public ResponseEntity<Resource> downloadOtf(@PathVariable Integer fontId) {
-        return downloadFontFile(fontId, "otf");
+    public ResponseEntity<Resource> downloadOtf(
+            @PathVariable Integer fontId,
+            @RequestParam("userId") String userId
+    ) {
+        return downloadFontFile(fontId, "otf", userId);
     }
 
-    private ResponseEntity<Resource> downloadFontFile(Integer fontId, String format) {
+
+    private ResponseEntity<Resource> downloadFontFile(Integer fontId, String format, String userId)
+    {
         Font font = fontRepository.findById(fontId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다."));
 
@@ -168,9 +202,17 @@ public class FontController {
             throw new IllegalArgumentException("파일을 찾을 수 없습니다: " + filePath);
         }
 
-        // 다운로드 수 증가
-        font.setDownloadCount(font.getDownloadCount() + 1);
-        fontRepository.save(font);
+        // 다운로드 수 증가(같은 유저 중복 다운로드시 다운로드 수 증가 없음)
+        if (!savedFontRepository.existsByUserIdAndFontId(userId, fontId)) {
+            font.setDownloadCount(font.getDownloadCount() + 1);
+            fontRepository.save(font);
+
+            SavedFont savedFont = SavedFont.builder()
+                    .userId(userId)
+                    .fontId(fontId)
+                    .build();
+            savedFontRepository.save(savedFont);
+        }
 
         Resource resource = new FileSystemResource(file);
 
@@ -197,6 +239,7 @@ public class FontController {
         FontLike fontLike = FontLike.builder()
                 .userId(userId)
                 .fontId(fontId)
+                .likedAt(LocalDateTime.now()) 
                 .build();
 
         fontLikeRepository.save(fontLike);
@@ -207,6 +250,28 @@ public class FontController {
 
         return "폰트 좋아요 완료";
     }
+
+    //폰트 좋아요 취소
+    @DeleteMapping("/{fontId}/like")
+    public String unlikeFont(
+            @PathVariable("fontId") Integer fontId,
+            @RequestParam("userId") String userId
+    ) {
+        FontLike fontLike = fontLikeRepository.findByUserIdAndFontId(userId, fontId)
+                .orElseThrow(() -> new IllegalArgumentException("좋아요한 기록이 없습니다."));
+
+        fontLikeRepository.delete(fontLike);
+
+        // 좋아요 수 감소
+        Font font = fontRepository.findById(fontId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다."));
+
+        font.setLikeCount(Math.max(0, font.getLikeCount() - 1)); // 음수 방지
+        fontRepository.save(font);
+
+        return "좋아요 취소 완료";
+    }
+
 
     //폰트선택 콤보박스용 내가 만든 공개/비공개 폰트 전부 +  저장한 폰트
     @GetMapping("/my")
@@ -236,5 +301,53 @@ public class FontController {
         return result;
     }
 
+    /*
+    // 📌 [추가] 폰트 설명을 폰트 이미지로 생성하여 반환
+    @GetMapping("/preview/{fontId}")
+    public ResponseEntity<Resource> generateFontPreview(@PathVariable Integer fontId) {
+        try {
+            Font font = fontRepository.findById(fontId)
+                    .orElseThrow(() -> new IllegalArgumentException("폰트를 찾을 수 없습니다."));
+
+            String previewText = font.getDescription();
+            String fileName = "preview_" + fontId + ".png";
+            File outputFile = new File("./uploads/previews/" + fileName);
+
+            if (outputFile.exists()) {
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_TYPE, "image/png")
+                        .body(new FileSystemResource(outputFile));
+            }
+
+            File fontFile = new File("./uploads/fonts/" + font.getTtfUrl());
+            if (!fontFile.exists()) throw new IOException("폰트 파일 없음: " + font.getTtfUrl());
+
+            Font awtFont = Font.createFont(Font.TRUETYPE_FONT, new FileInputStream(fontFile))
+                    .deriveFont(Font.PLAIN, 36f);
+
+            BufferedImage image = new BufferedImage(1000, 300, BufferedImage.TYPE_INT_ARGB);
+Graphics2D g2d = image.createGraphics();
+g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+g2d.setFont(awtFont); // awtFont는 java.awt.Font로 선언된 객체
+g2d.setColor(Color.BLACK);
+g2d.drawString(previewText, 30, 150);
+g2d.dispose();
+
+
+            ImageIO.write(image, "png", outputFile);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, "image/png")
+                    .body(new FileSystemResource(outputFile));
+
+        } catch (Exception e) {
+            throw new RuntimeException("프리뷰 이미지 생성 실패: " + e.getMessage());
+        }
+    }
+
+     */
+
 
 }
+
+

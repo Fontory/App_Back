@@ -72,19 +72,29 @@ public class PracticeSheetController {
                 throw new IOException("사용자 폰트 파일을 찾을 수 없습니다.");
             }
 
-            customFont = customFont.deriveFont(java.awt.Font.PLAIN, 48f);
-
-
-
             // 3. 이미지 그리기
             BufferedImage outputImage = new BufferedImage(
                     bgImage.getWidth(), bgImage.getHeight(), BufferedImage.TYPE_INT_RGB);
             Graphics2D g2d = outputImage.createGraphics();
             g2d.drawImage(bgImage, 0, 0, null);
+
+            // 폰트 설정
+            customFont = customFont.deriveFont(java.awt.Font.PLAIN, 64f);
             g2d.setFont(customFont);
-            g2d.setColor(Color.BLACK);
-            g2d.drawString(request.getPhrase(), 50, bgImage.getHeight() / 2);
+
+            // 연한 회색 설정
+            g2d.setColor(new Color(153, 153, 153)); // #999999
+
+            // 중앙 정렬
+            FontMetrics metrics = g2d.getFontMetrics(customFont);
+            int textWidth = metrics.stringWidth(request.getPhrase());
+            int x = (bgImage.getWidth() - textWidth) / 2;
+            int y = bgImage.getHeight() / 2;
+
+            // 텍스트 그리기
+            g2d.drawString(request.getPhrase(), x, y);
             g2d.dispose();
+
 
             // 4. 이미지 저장
             String fileName = "sheet_" + UUID.randomUUID() + ".png";
