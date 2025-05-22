@@ -155,7 +155,7 @@ public class UserService {
     public String storeProfileImageForSignup(MultipartFile file, HttpSession session) throws IOException {
 
         //저장 디렉토리 설정
-        String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile";
+        String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profiles";
         File dir = new File(uploadDir);
         if (!dir.exists()) dir.mkdirs();
 
@@ -184,7 +184,7 @@ public class UserService {
         }
 
         // 저장 디렉토리
-        String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profile";
+        String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/profiles";
         File dir = new File(uploadDir);
         if (!dir.exists()) dir.mkdirs();
 
