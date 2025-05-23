@@ -33,31 +33,42 @@ public class PostService {
     private final PostLikeRepository postLikeRepository;
     private final BadgeService badgeService;
 
-    //게시물 글 작성
+    // 게시물 글 작성
     public SimpleResponseDto createPost(PostCreateRequestDto dto, MultipartFile imageFile, HttpSession session) {
+        System.out.println("[게시물 등록] 요청 시작");
+
         User user = (User) session.getAttribute("user");
         if (user == null) {
+            System.out.println("[게시물 등록] 로그인되지 않은 사용자 요청");
             return new SimpleResponseDto(500, "로그인이 필요합니다.", null);
         }
+        System.out.println("[게시물 등록] 사용자 인증 성공: " + user.getUserId());
 
         PostType type;
         try {
             type = PostType.valueOf(dto.getPostType().toUpperCase());
+            System.out.println("[게시물 등록] 게시물 타입 확인 성공: " + type);
         } catch (IllegalArgumentException e) {
+            System.out.println("[게시물 등록] 유효하지 않은 게시물 타입: " + dto.getPostType());
             return new SimpleResponseDto(500, "유효하지 않은 게시글 유형입니다.", null);
         }
 
         // 이미지 파일 업로드 처리
         String uploadDir = "/home/t25123/v0.5src/mobile/App_Back/uploads/post";
         File dir = new File(uploadDir);
-        if (!dir.exists()) dir.mkdirs();
+        if (!dir.exists()) {
+            dir.mkdirs();
+            System.out.println("[게시물 등록] 업로드 디렉토리 생성: " + uploadDir);
+        }
 
         String fileName = UUID.randomUUID().toString() + ".jpg";
         String savePath = uploadDir + File.separator + fileName;
 
         try {
             imageFile.transferTo(new File(savePath));
+            System.out.println("[게시물 등록] 이미지 업로드 성공: " + savePath);
         } catch (IOException e) {
+            System.out.println("[게시물 등록] 이미지 업로드 실패: " + e.getMessage());
             return new SimpleResponseDto(500, "이미지 업로드 실패: " + e.getMessage(), null);
         }
 
@@ -73,9 +84,12 @@ public class PostService {
                 .build();
 
         postRepository.save(post);
+        System.out.println("[게시물 등록] 게시물 DB 저장 완료: post_id=" + post.getPostId());
 
         badgeService.checkAndAcquireBadge(user);
+        System.out.println("[게시물 등록] 뱃지 체크 완료");
 
+        System.out.println("[게시물 등록] 요청 완료");
         return new SimpleResponseDto(200, "게시물이 등록되었습니다.", null);
     }
 

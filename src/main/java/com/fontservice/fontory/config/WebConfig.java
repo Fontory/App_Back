@@ -23,8 +23,8 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/preview/**")
                 .addResourceLocations("file:./uploads/preview/");
 
-        registry.addResourceHandler("/images/**")
-                .addResourceLocations("file:./uploads/profile/");
+        registry.addResourceHandler("/profiles/**")
+                .addResourceLocations("file:./uploads/profiles/");
 
         registry.addResourceHandler("/handwriting/**")
                 .addResourceLocations("file:./uploads/handwriting/");
