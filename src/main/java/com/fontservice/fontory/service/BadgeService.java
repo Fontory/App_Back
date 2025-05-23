@@ -37,7 +37,7 @@ public class BadgeService {
     }
 
     public List<BadgeResponseDto> getMyBadges(User user) {
-        List<UserBadge> userBadges = userBadgeRepository.findByUser(user);
+        List<UserBadge> userBadges = userBadgeRepository.findByUserWithBadge(user);
         return userBadges.stream()
                 .map(userBadge -> {
                     Badge badge = userBadge.getBadge();
@@ -55,16 +55,13 @@ public class BadgeService {
     public void checkAndAcquireBadge(User user) {
         int postCount = postRepository.countByUser(user);
 
-        // 1. 이미 사용자가 가진 뱃지 목록 조회
         List<UserBadge> userBadges = userBadgeRepository.findByUser(user);
         Set<Integer> acquiredBadgeIds = userBadges.stream()
                 .map(ub -> ub.getBadge().getBadgeId())
                 .collect(Collectors.toSet());
 
-        // 2. 모든 뱃지 목록 조회
         List<Badge> allBadges = badgeRepository.findAll();
 
-        // 3. 조건을 만족하지만 아직 없는 뱃지가 있다면 획득
         for (Badge badge : allBadges) {
             if (postCount >= badge.getRequiredPostCount() && !acquiredBadgeIds.contains(badge.getBadgeId())) {
                 UserBadge userBadge = UserBadge.builder()

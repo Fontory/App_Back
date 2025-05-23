@@ -22,15 +22,15 @@ public class PostController {
 
     private final PostService postService;
     private final UserService userService;
-
+    
     @PostMapping
-    @Operation(summary = "게시물 작성", description = "로그인한 사용자가 필사 or 일반 게시물을 작성합니다.")
     public ResponseEntity<SimpleResponseDto> createPost(
-            @RequestParam("imageFile") MultipartFile imageFile,
-            @RequestParam("content") String content,
-            @RequestParam("postType") String postType,
-            @RequestParam("fontId") Integer fontId,
-            HttpSession session) {
+        @RequestParam("imageFile") MultipartFile imageFile,
+        @RequestParam("content") String content,
+        @RequestParam("postType") String postType,
+        @RequestParam(value = "fontId", required = false) Integer fontId, // ✅ 선택값
+        HttpSession session
+    ) {
 
         PostCreateRequestDto dto = new PostCreateRequestDto(content, postType, fontId);
         return ResponseEntity.ok(postService.createPost(dto, imageFile, session));

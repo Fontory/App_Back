@@ -33,9 +33,18 @@ import java.awt.Graphics2D;
 import java.awt.Color;
 import java.awt.RenderingHints;
 
+// 이미지 렌더링 관련
+import java.awt.image.BufferedImage;
+import java.awt.Graphics2D;
+import java.awt.Color;
+import java.awt.RenderingHints;
+import java.awt.FontMetrics;
+import java.awt.font.TextLayout;
+import java.awt.font.FontRenderContext;
 
-
-
+// 파일 스트림 및 변환 관련
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 
 @RestController
 @RequestMapping("/fonts")
@@ -257,16 +266,17 @@ public class FontController {
             @PathVariable("fontId") Integer fontId,
             @RequestParam("userId") String userId
     ) {
+        System.out.println("💔 좋아요 취소 요청: fontId=" + fontId + ", userId=" + userId);  // ✅ 추가
+
         FontLike fontLike = fontLikeRepository.findByUserIdAndFontId(userId, fontId)
                 .orElseThrow(() -> new IllegalArgumentException("좋아요한 기록이 없습니다."));
 
         fontLikeRepository.delete(fontLike);
 
-        // 좋아요 수 감소
         Font font = fontRepository.findById(fontId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다."));
 
-        font.setLikeCount(Math.max(0, font.getLikeCount() - 1)); // 음수 방지
+        font.setLikeCount(Math.max(0, font.getLikeCount() - 1));
         fontRepository.save(font);
 
         return "좋아요 취소 완료";
@@ -301,53 +311,97 @@ public class FontController {
         return result;
     }
 
-    /*
-    // 📌 [추가] 폰트 설명을 폰트 이미지로 생성하여 반환
-    @GetMapping("/preview/{fontId}")
-    public ResponseEntity<Resource> generateFontPreview(@PathVariable Integer fontId) {
+    //폰트 설명글 이미지 렌더링
+    @GetMapping("/{fontId}/render")
+    public ResponseEntity<byte[]> renderFontDescription(
+            @PathVariable("fontId") Integer fontId,
+            @RequestParam(name = "text", required = false, defaultValue = "샘플 미리보기입니다.") String text
+    ) {
         try {
-            Font font = fontRepository.findById(fontId)
-                    .orElseThrow(() -> new IllegalArgumentException("폰트를 찾을 수 없습니다."));
+            com.fontservice.fontory.domain.Font font = fontRepository.findById(fontId)
+                    .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다."));
 
-            String previewText = font.getDescription();
-            String fileName = "preview_" + fontId + ".png";
-            File outputFile = new File("./uploads/previews/" + fileName);
+            String ttfUrl = font.getTtfUrl();
+            if (!ttfUrl.startsWith("/")) {
+                ttfUrl = "/" + ttfUrl;
+            }
+            String fontFilePath = "./uploads/fonts" + ttfUrl;
 
-            if (outputFile.exists()) {
-                return ResponseEntity.ok()
-                        .header(HttpHeaders.CONTENT_TYPE, "image/png")
-                        .body(new FileSystemResource(outputFile));
+            float fontSize = 48f;
+            java.awt.Font awtFont = java.awt.Font.createFont(
+                    java.awt.Font.TRUETYPE_FONT,
+                    new FileInputStream(fontFilePath)
+            ).deriveFont(java.awt.Font.PLAIN, fontSize);
+
+            int maxWidth = 700;
+            int padding = 40;
+
+            // 측정용 Graphics2D 생성
+            BufferedImage tmpImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D tmpG = tmpImage.createGraphics();
+            tmpG.setFont(awtFont);
+            FontMetrics metrics = tmpG.getFontMetrics();
+
+            // 줄 단위로 나누기
+            List<String> lines = new ArrayList<>();
+            StringBuilder line = new StringBuilder();
+            for (char c : text.toCharArray()) {
+                line.append(c);
+                if (metrics.stringWidth(line.toString()) > maxWidth - padding * 2) {
+                    line.deleteCharAt(line.length() - 1);
+                    lines.add(line.toString());
+                    line = new StringBuilder().append(c);
+                }
+            }
+            if (!line.isEmpty()) lines.add(line.toString());
+
+            tmpG.dispose();
+
+            int lineHeight = metrics.getHeight();
+            int imageHeight = lineHeight * lines.size() + padding * 2;
+
+            // ✅ 최소 이미지 너비 보장 (500 이상)
+            int textWidth = lines.stream()
+                    .mapToInt(metrics::stringWidth)
+                    .max()
+                    .orElse(0);
+
+            int imageWidth = Math.max(500, Math.min((int)(textWidth * 1.2) + padding * 2, 800));
+
+            BufferedImage image = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2d = image.createGraphics();
+            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2d.setColor(Color.WHITE);
+            g2d.fillRect(0, 0, imageWidth, imageHeight);
+
+            g2d.setColor(Color.BLACK);
+            g2d.setFont(awtFont);
+
+            // 왼쪽 정렬
+            FontRenderContext frc = g2d.getFontRenderContext();
+            int y = padding;
+            for (String l : lines) {
+                TextLayout layout = new TextLayout(l, awtFont, frc);
+                layout.draw(g2d, padding, y + metrics.getAscent());
+                y += lineHeight;
             }
 
-            File fontFile = new File("./uploads/fonts/" + font.getTtfUrl());
-            if (!fontFile.exists()) throw new IOException("폰트 파일 없음: " + font.getTtfUrl());
+            g2d.dispose();
 
-            Font awtFont = Font.createFont(Font.TRUETYPE_FONT, new FileInputStream(fontFile))
-                    .deriveFont(Font.PLAIN, 36f);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(image, "png", baos);
 
-            BufferedImage image = new BufferedImage(1000, 300, BufferedImage.TYPE_INT_ARGB);
-Graphics2D g2d = image.createGraphics();
-g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-g2d.setFont(awtFont); // awtFont는 java.awt.Font로 선언된 객체
-g2d.setColor(Color.BLACK);
-g2d.drawString(previewText, 30, 150);
-g2d.dispose();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.IMAGE_PNG);
 
-
-            ImageIO.write(image, "png", outputFile);
-
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_TYPE, "image/png")
-                    .body(new FileSystemResource(outputFile));
+            return new ResponseEntity<>(baos.toByteArray(), headers, HttpStatus.OK);
 
         } catch (Exception e) {
-            throw new RuntimeException("프리뷰 이미지 생성 실패: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(("이미지 렌더링 실패: " + e.getMessage()).getBytes());
         }
     }
-
-     */
-
-
 }
 
 
