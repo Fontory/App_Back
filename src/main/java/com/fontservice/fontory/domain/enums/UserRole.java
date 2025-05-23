@@ -16,4 +16,5 @@ public enum UserRole {
         return UserRole.valueOf(value.toUpperCase());
     }
 
+
 }
