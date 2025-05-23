@@ -154,6 +154,8 @@ public class FontController {
             @PathVariable("fontId") Integer fontId,
             @RequestParam("userId") String userId
     ) {
+        System.out.println("📥 폰트 저장 요청: fontId=" + fontId + ", userId=" + userId);
+
         // 이미 저장했는지 확인
         if (savedFontRepository.existsByUserIdAndFontId(userId, fontId)) {
             return "이미 저장한 폰트입니다.";
@@ -162,6 +164,7 @@ public class FontController {
         SavedFont savedFont = SavedFont.builder()
                 .userId(userId)
                 .fontId(fontId)
+                .savedAt(LocalDateTime.now())  // ✅ 이 줄을 반드시 추가
                 .build();
 
         savedFontRepository.save(savedFont);

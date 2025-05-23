@@ -213,4 +213,9 @@ public class UserService {
 
         return fileName;
     }
+
+    public User findByUserId(String userId) {
+    return userRepository.findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다: " + userId));
+    }
 }

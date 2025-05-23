@@ -99,6 +99,30 @@ public class UserController {
                     ));
         }
     }
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> getUserProfile(@RequestParam("userId") String userId) {
+        try {
+            User user = userService.findByUserId(userId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "status", 404,
+                        "message", "해당 유저를 찾을 수 없습니다."
+                ));
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "userId", user.getUserId(),
+                    "nickname", user.getNickname(),
+                    "profileImage", user.getProfileImage()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "status", 500,
+                    "message", "유저 프로필 조회 실패: " + e.getMessage()
+            ));
+        }
+    }
 }
 
 

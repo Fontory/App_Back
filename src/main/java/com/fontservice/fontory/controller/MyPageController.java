@@ -7,6 +7,7 @@ import com.fontservice.fontory.dto.mypage.FontResponseDto;
 import com.fontservice.fontory.dto.mypage.ProfileResponseDto;
 import com.fontservice.fontory.dto.mypage.ProfileUpdateRequestDto;
 import com.fontservice.fontory.dto.post.PostListResponseDto;
+import com.fontservice.fontory.dto.mypage.DownloadedFontResponseDto;
 import com.fontservice.fontory.dto.sheet.PracticeSheetResponse;
 import com.fontservice.fontory.service.BadgeService;
 import com.fontservice.fontory.service.MypageService;
@@ -19,9 +20,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.fontservice.fontory.domain.Font;
+
+
+import com.fontservice.fontory.repository.SavedFontRepository;
+
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/mypage")
@@ -32,6 +39,9 @@ public class MyPageController {
     private final UserService userService;
     private final BadgeService badgeService;
     private final MypageService mypageService;
+    private final SavedFontRepository savedFontRepository;
+    
+
 
     @GetMapping("/posts")
     @Operation(summary = "사용자가 작성한 필사 게시물 조회")
@@ -132,17 +142,36 @@ public class MyPageController {
         return new SimpleResponseDto<>(200, "내가 만든 폰트 조회 성공", fonts);
     }
 
-    @GetMapping("/fonts/downloads")
-    @Operation(summary = "사용자가 다운로드한 폰트 조회")
-    public SimpleResponseDto<List<FontResponseDto>> getDownloadedFonts(HttpSession session) {
-        User user = (User) session.getAttribute("user");
-        if (user == null) {
-            return new SimpleResponseDto<>(401, "로그인이 필요합니다.", null);
-        }
+@GetMapping("/fonts/downloads")
+public ResponseEntity<Map<String, Object>> getDownloadedFonts(@RequestParam("userId") String userId) {
+    List<Font> downloadedFonts = savedFontRepository.findSavedFontsByUserId(userId);
 
-        List<FontResponseDto> fonts = mypageService.getDownloadedFonts(user);
-        return new SimpleResponseDto<>(200, "다운로드한 폰트 조회 성공", fonts);
-    }
+    List<DownloadedFontResponseDto> result = downloadedFonts.stream().map(font -> {
+        User creator = font.getUser(); // 연관된 User 정보
+
+        return DownloadedFontResponseDto.builder()
+                .fontId(font.getFontId())
+                .name(font.getName())
+                .otfUrl(font.getOtfUrl())
+                .ttfUrl(font.getTtfUrl())
+                .description(font.getDescription())
+                .originalImageUrl(font.getOriginalImageUrl())
+                .isPublic(font.getIsPublic().name())
+                .likeCount(font.getLikeCount())
+                .downloadCount(font.getDownloadCount())
+                .createdAt(font.getCreatedAt().toString())
+                .creatorId(creator.getUserId())
+                .creatorProfileImage(creator.getProfileImage())
+                .build();
+    }).collect(Collectors.toList());
+
+    return ResponseEntity.ok(Map.of(
+            "status", 200,
+            "message", "다운로드한 폰트 조회 성공",
+            "data", result
+    ));
+}
+
 
     @GetMapping("/fonts/likes")
     @Operation(summary = "사용자가 좋아요한 폰트 조회")
