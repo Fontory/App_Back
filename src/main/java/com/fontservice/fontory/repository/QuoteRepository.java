@@ -8,6 +8,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface QuoteRepository extends JpaRepository<Quote, Long> {
     // 랜덤 문구 한 개 가져오기
-    @Query(value = "SELECT * FROM quote ORDER BY RAND() LIMIT 1", nativeQuery = true)
+    @Query(value = "SELECT * FROM quotes ORDER BY RAND() LIMIT 1", nativeQuery = true)
     Quote findRandomQuote();
 }

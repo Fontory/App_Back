@@ -46,7 +46,7 @@ public class PostService {
 
         PostType type;
         try {
-            type = PostType.valueOf(dto.getPostType().toUpperCase());
+            type = PostType.valueOf(dto.getPostType());
             System.out.println("[게시물 등록] 게시물 타입 확인 성공: " + type);
         } catch (IllegalArgumentException e) {
             System.out.println("[게시물 등록] 유효하지 않은 게시물 타입: " + dto.getPostType());
