@@ -15,6 +15,7 @@ public class PostListResponseDto {
     private String imageUrl;
     private String content;
     private String nickname;
+    private String profileImage;
     private LocalDateTime createdAt;
     private int likeCount;
 
@@ -24,6 +25,7 @@ public class PostListResponseDto {
                 post.getImageUrl(),
                 post.getContent(),
                 post.getUser().getNickname(),
+                post.getUser().getProfileImage(),
                 post.getCreatedAt(),
                 post.getLikeCount()
         );

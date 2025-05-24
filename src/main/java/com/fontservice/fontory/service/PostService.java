@@ -109,6 +109,7 @@ public class PostService {
                         .imageUrl(post.getImageUrl())
                         .content(post.getContent())
                         .nickname(post.getUser().getNickname())
+                        .profileImage(post.getUser().getProfileImage())
                         .createdAt(post.getCreatedAt())
                         .likeCount(post.getLikeCount())
                         .build())
@@ -182,6 +183,7 @@ public class PostService {
                             post.getImageUrl(),
                             post.getContent(),
                             post.getUser().getNickname(),
+                            post.getUser().getProfileImage(),
                             post.getCreatedAt(),
                             post.getLikeCount()
                     );
