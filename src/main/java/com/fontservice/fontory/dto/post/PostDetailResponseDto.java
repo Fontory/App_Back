@@ -14,6 +14,8 @@ public class PostDetailResponseDto {
     private String imageUrl;
     private String content;
     private String nickname;
+    private String profileImage;
     private LocalDateTime createdAt;
     private int likeCount;
+    private Integer fontId;
 }

@@ -28,6 +28,9 @@ public class WebConfig implements WebMvcConfigurer {
 
         registry.addResourceHandler("/profiles/**")
                 .addResourceLocations("file:./uploads/profiles/");
+
+        registry.addResourceHandler("/post/**")
+                .addResourceLocations("file:./uploads/post/");                
     }
 
     // ✅ CORS 허용 설정

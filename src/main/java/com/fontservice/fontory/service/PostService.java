@@ -131,8 +131,10 @@ public class PostService {
                 .imageUrl(post.getImageUrl())
                 .content(post.getContent())
                 .nickname(post.getUser().getNickname())
+                .profileImage(post.getUser().getProfileImage())
                 .createdAt(post.getCreatedAt())
                 .likeCount(post.getLikeCount())
+                .fontId(post.getFontId())
                 .build();
     }
 

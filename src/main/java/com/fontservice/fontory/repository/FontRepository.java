@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface FontRepository extends JpaRepository<Font, Integer> {
@@ -22,8 +23,12 @@ public interface FontRepository extends JpaRepository<Font, Integer> {
     // 로그인된 사용자의 비공개된 폰트 조회
     List<Font> findByUserIdAndIsPublic(String userId, Font.PublicStatus isPublic);
 
-    //로그인된 사용자의 공개/비공개 폰트
+    // 로그인된 사용자의 공개/비공개 폰트 조회
     List<Font> findByUserId(String userId);
 
+    // ✅ 폰트 ID로 조회 시 user 정보도 함께 조회 (LazyInitializationException 방지용)
+    @Query("SELECT f FROM Font f JOIN FETCH f.user WHERE f.fontId = :fontId")
+    Optional<Font> findWithUserByFontId(@Param("fontId") Integer fontId);
+    boolean existsByUserIdAndFontId(String userId, Integer fontId);
 
 }

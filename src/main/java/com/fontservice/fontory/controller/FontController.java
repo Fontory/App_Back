@@ -134,19 +134,41 @@ public class FontController {
 
     //폰트 상세페이지 불러오기
     @GetMapping("/api/{fontId}")
-    public FontDetailResponse getFontDetail(@PathVariable("fontId") Integer fontId) {
-        Font font = fontRepository.findById(fontId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다: " + fontId));
+    public FontDetailResponse getFontDetail(
+            @PathVariable("fontId") Integer fontId,
+            HttpServletRequest request
+    ) {
+        User sessionUser = (User) request.getSession().getAttribute("user");
+        String userId = sessionUser != null ? sessionUser.getUserId() : null;
+
+        Font font = fontRepository.findWithUserByFontId(fontId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다."));
+
+        boolean liked = false;
+        if (userId != null) {
+            liked = fontLikeRepository.existsByUserIdAndFontId(userId, fontId);
+        }
 
         return FontDetailResponse.builder()
                 .fontId(font.getFontId())
-                .name(font.getName())
-                .userId(font.getUserId())
+                .fontName(font.getName())
+                .creatorId(font.getUser().getUserId())
+                .creatorNickname(font.getUser().getNickname())
+                .creatorProfileImage(font.getUser().getProfileImage())
                 .likeCount(font.getLikeCount())
                 .downloadCount(font.getDownloadCount())
-                .originalImageUrl("/images/" + font.getOriginalImageUrl())
+                .ttfUrl(font.getTtfUrl())
+                .otfUrl(font.getOtfUrl())
+                .description(font.getDescription())
+                .originalImageUrl(font.getOriginalImageUrl())
+                .createdAt(font.getCreatedAt().toString())
+                .liked(liked)
                 .build();
+
     }
+
+
+
 
     //폰트 저장
     @PostMapping("/{fontId}/save")
@@ -374,7 +396,7 @@ public class FontController {
             BufferedImage image = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = image.createGraphics();
             g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2d.setColor(Color.WHITE);
+            g2d.setColor(new Color(249, 249, 249)); // ✔️ 배경색 #f9f9f9
             g2d.fillRect(0, 0, imageWidth, imageHeight);
 
             g2d.setColor(Color.BLACK);
