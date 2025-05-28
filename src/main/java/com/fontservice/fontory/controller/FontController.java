@@ -5,6 +5,7 @@ import com.fontservice.fontory.domain.FontLike;
 import com.fontservice.fontory.domain.SavedFont;
 import com.fontservice.fontory.domain.User;
 import com.fontservice.fontory.dto.font.FontDetailResponse;
+import com.fontservice.fontory.dto.font.FontRatingRequestDto;
 import com.fontservice.fontory.dto.font.FontWithUserProfileResponse;
 import com.fontservice.fontory.dto.font.MyFontResponse;
 import com.fontservice.fontory.repository.FontLikeRepository;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.imageio.ImageIO;
@@ -45,6 +47,7 @@ import java.awt.font.FontRenderContext;
 // 파일 스트림 및 변환 관련
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/fonts")
@@ -106,7 +109,7 @@ public class FontController {
     //로그인된 사용자의 비공개 폰트리스트 로드
     @GetMapping("/private")
     public List<Font> getMyPrivateFonts(@RequestParam("userId") String userId) {
-        return fontRepository.findByUserIdAndIsPublic(userId, Font.PublicStatus.N);
+        return fontRepository.findByUser_UserIdAndIsPublic(userId, Font.PublicStatus.N);
     }
 
     //공개로 전환
@@ -120,7 +123,7 @@ public class FontController {
                 .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다: " + fontId));
 
         // 작성자 본인 확인
-        if (!font.getUserId().equals(userId)) {
+        if (!font.getUser().equals(userId)) {
             throw new IllegalArgumentException("본인이 생성한 폰트만 공개할 수 있습니다.");
         }
 
@@ -186,7 +189,7 @@ public class FontController {
         SavedFont savedFont = SavedFont.builder()
                 .userId(userId)
                 .fontId(fontId)
-                .savedAt(LocalDateTime.now())  // ✅ 이 줄을 반드시 추가
+                .savedAt(LocalDateTime.now())
                 .build();
 
         savedFontRepository.save(savedFont);
@@ -196,27 +199,47 @@ public class FontController {
 
     //TTF 파일 다운로드
     @GetMapping("/{fontId}/download/ttf")
-    public ResponseEntity<Resource> downloadTtf(
+    public ResponseEntity<?> downloadTtf(
             @PathVariable Integer fontId,
-            @RequestParam("userId") String userId
+            HttpServletRequest request
     ) {
+        User sessionUser = (User) request.getSession().getAttribute("user");
+        String userId = sessionUser != null ? sessionUser.getUserId() : null;
+
         return downloadFontFile(fontId, "ttf", userId);
     }
 
 
     @GetMapping("/{fontId}/download/otf")
-    public ResponseEntity<Resource> downloadOtf(
+    public ResponseEntity<?> downloadOtf(
             @PathVariable Integer fontId,
-            @RequestParam("userId") String userId
+            HttpServletRequest request
     ) {
+        User sessionUser = (User) request.getSession().getAttribute("user");
+        String userId = sessionUser != null ? sessionUser.getUserId() : null;
+
         return downloadFontFile(fontId, "otf", userId);
     }
 
 
-    private ResponseEntity<Resource> downloadFontFile(Integer fontId, String format, String userId)
+    private ResponseEntity<?> downloadFontFile(Integer fontId, String format, String userId)
     {
         Font font = fontRepository.findById(fontId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다."));
+
+
+        // 폰트 생성자 본인일 경우에는 별점 부여 후에 다운 가능.
+        boolean isCreator = font.getUser().getUserId().equals(userId);
+
+        if (isCreator && font.getCreatorRating() == null) {
+            // 별점 필요 → JSON 반환
+            Map<String, Object> response = new HashMap<>();
+            response.put("status", "need_rating");
+            response.put("message", "별점 제출 후 다운로드 가능합니다.");
+            response.put("fontId", fontId);
+            return ResponseEntity.ok(response);
+        }
+
 
         String filePath;
         String originalFileName;
@@ -231,7 +254,7 @@ public class FontController {
             throw new IllegalArgumentException("지원하지 않는 포맷입니다: " + format);
         }
 
-        File file = new File("./uploads/fonts" + filePath);
+        File file = new File("./uploads/fonts/" + filePath);
         if (!file.exists()) {
             throw new IllegalArgumentException("파일을 찾을 수 없습니다: " + filePath);
         }
@@ -256,6 +279,43 @@ public class FontController {
 
         return new ResponseEntity<>(resource, headers, HttpStatus.OK);
     }
+
+    //별점 제출
+    @PostMapping("/{fontId}/rating")
+    public ResponseEntity<?> submitRating(
+            @PathVariable Integer fontId,
+            @RequestBody FontRatingRequestDto request,
+            HttpServletRequest httpRequest
+    ) {
+        User sessionUser = (User) httpRequest.getSession().getAttribute("user");
+        String userId = sessionUser != null ? sessionUser.getUserId() : null;
+
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("status", "error", "message", "로그인 후 이용 가능합니다."));
+        }
+
+        Font font = fontRepository.findById(fontId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다."));
+
+        if (!font.getUser().getUserId().equals(userId)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("status", "error", "message", "작성자만 별점을 등록할 수 있습니다."));
+        }
+
+        Integer rating = request.getRating();
+
+        font.setCreatorRating(request.getRating().byteValue());
+
+        fontRepository.save(font);
+
+        return ResponseEntity.ok(Map.of(
+                "status", "success",
+                "fontId", fontId,
+                "creatorRating", rating
+        ));
+    }
+
 
     //폰트 좋아요
     @PostMapping("/{fontId}/like")
@@ -314,7 +374,7 @@ public class FontController {
         List<MyFontResponse> result = new ArrayList<>();
 
         // 내가 만든 폰트
-        List<Font> createdFonts = fontRepository.findByUserId(userId);
+        List<Font> createdFonts = fontRepository.findByUser_UserId(userId);
         for (Font font : createdFonts) {
             result.add(MyFontResponse.builder()
                     .fontId(font.getFontId())
@@ -336,29 +396,30 @@ public class FontController {
         return result;
     }
 
-    //폰트 설명글 이미지 렌더링
+    // 폰트 설명글 이미지 렌더링
     @GetMapping("/{fontId}/render")
     public ResponseEntity<byte[]> renderFontDescription(
             @PathVariable("fontId") Integer fontId,
-            @RequestParam(name = "text", required = false, defaultValue = "샘플 미리보기입니다.") String text
+            @RequestParam(name = "text", required = false, defaultValue = "샘플 미리보기입니다.") String text,
+            @RequestParam(name = "size", required = false, defaultValue = "48") float fontSize // ✅ 폰트 크기 파라미터
     ) {
         try {
             com.fontservice.fontory.domain.Font font = fontRepository.findById(fontId)
                     .orElseThrow(() -> new IllegalArgumentException("해당 폰트를 찾을 수 없습니다."));
 
             String ttfUrl = font.getTtfUrl();
+            ttfUrl = ttfUrl.replaceFirst("^/?fonts/", "");
             if (!ttfUrl.startsWith("/")) {
                 ttfUrl = "/" + ttfUrl;
             }
             String fontFilePath = "./uploads/fonts" + ttfUrl;
 
-            float fontSize = 48f;
             java.awt.Font awtFont = java.awt.Font.createFont(
                     java.awt.Font.TRUETYPE_FONT,
                     new FileInputStream(fontFilePath)
             ).deriveFont(java.awt.Font.PLAIN, fontSize);
 
-            int maxWidth = 700;
+            int maxWidth = (int)(fontSize * 15);
             int padding = 40;
 
             // 측정용 Graphics2D 생성
@@ -367,42 +428,47 @@ public class FontController {
             tmpG.setFont(awtFont);
             FontMetrics metrics = tmpG.getFontMetrics();
 
-            // 줄 단위로 나누기
+            // 줄 단위로 먼저 \n 기준 분리
+            String[] rawLines = text.split("\n");
+
             List<String> lines = new ArrayList<>();
-            StringBuilder line = new StringBuilder();
-            for (char c : text.toCharArray()) {
-                line.append(c);
-                if (metrics.stringWidth(line.toString()) > maxWidth - padding * 2) {
-                    line.deleteCharAt(line.length() - 1);
-                    lines.add(line.toString());
-                    line = new StringBuilder().append(c);
+            for (String rawLine : rawLines) {
+                StringBuilder line = new StringBuilder();
+                for (char c : rawLine.toCharArray()) {
+                    line.append(c);
+                    if (metrics.stringWidth(line.toString()) > maxWidth - padding * 2) {
+                        line.deleteCharAt(line.length() - 1);
+                        lines.add(line.toString());
+                        line = new StringBuilder().append(c);
+                    }
                 }
+                if (!line.isEmpty()) lines.add(line.toString());
             }
-            if (!line.isEmpty()) lines.add(line.toString());
 
             tmpG.dispose();
 
             int lineHeight = metrics.getHeight();
             int imageHeight = lineHeight * lines.size() + padding * 2;
 
-            // ✅ 최소 이미지 너비 보장 (500 이상)
             int textWidth = lines.stream()
                     .mapToInt(metrics::stringWidth)
                     .max()
                     .orElse(0);
 
-            int imageWidth = Math.max(500, Math.min((int)(textWidth * 1.2) + padding * 2, 800));
+            // fontSize 비례 기준 보장 (ex. 최소 800 이상)
+            int baseWidth = (int)(fontSize * 15);  // 예: 64pt × 15 = 960
+            int imageWidth = Math.max(baseWidth, Math.min((int)(textWidth * 1.2) + padding * 2, 1600));
+
 
             BufferedImage image = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB);
             Graphics2D g2d = image.createGraphics();
             g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2d.setColor(new Color(249, 249, 249)); // ✔️ 배경색 #f9f9f9
+            g2d.setColor(new Color(249, 249, 249)); // 배경색
             g2d.fillRect(0, 0, imageWidth, imageHeight);
 
             g2d.setColor(Color.BLACK);
             g2d.setFont(awtFont);
 
-            // 왼쪽 정렬
             FontRenderContext frc = g2d.getFontRenderContext();
             int y = padding;
             for (String l : lines) {
@@ -427,6 +493,7 @@ public class FontController {
                     .body(("이미지 렌더링 실패: " + e.getMessage()).getBytes());
         }
     }
+
 }
 
 

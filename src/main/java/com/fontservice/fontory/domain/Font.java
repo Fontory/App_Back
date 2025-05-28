@@ -19,12 +19,9 @@ public class Font {
     @Column(name = "font_id")
     private Integer fontId;
 
-    @Column(name = "user_id", nullable = false, length = 30)
-    private String userId;
-
     //유저프로필 join
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
     @Column(nullable = false, length = 100)
@@ -58,8 +55,8 @@ public class Font {
     @Column(name = "download_count", nullable = false)
     private Integer downloadCount = 0;
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     public enum PublicStatus {
         Y, N

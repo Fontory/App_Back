@@ -21,14 +21,14 @@ public interface FontRepository extends JpaRepository<Font, Integer> {
     List<Font> findWithUserByIsPublicOrderByLikeCountDesc(@Param("isPublic") Font.PublicStatus isPublic);
 
     // 로그인된 사용자의 비공개된 폰트 조회
-    List<Font> findByUserIdAndIsPublic(String userId, Font.PublicStatus isPublic);
+    List<Font> findByUser_UserIdAndIsPublic(String userId, Font.PublicStatus isPublic);
 
     // 로그인된 사용자의 공개/비공개 폰트 조회
-    List<Font> findByUserId(String userId);
+    List<Font> findByUser_UserId(String userId);
 
     // ✅ 폰트 ID로 조회 시 user 정보도 함께 조회 (LazyInitializationException 방지용)
     @Query("SELECT f FROM Font f JOIN FETCH f.user WHERE f.fontId = :fontId")
     Optional<Font> findWithUserByFontId(@Param("fontId") Integer fontId);
-    boolean existsByUserIdAndFontId(String userId, Integer fontId);
+    boolean existsByUser_UserIdAndFontId(String userId, Integer fontId);
 
 }

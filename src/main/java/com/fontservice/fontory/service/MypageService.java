@@ -24,7 +24,7 @@ public class MypageService {
 
     //사용자가 만든 폰트 조회
     public List<FontResponseDto> getMyFonts(User user) {
-        return fontRepository.findByUserId(user.getUserId())
+        return fontRepository.findByUser_UserId(user.getUserId())
                 .stream()
                 .map(FontResponseDto::new)
                 .collect(Collectors.toList());
